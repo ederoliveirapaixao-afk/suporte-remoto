@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Painel de Suporte Remoto</title>
+<link rel="manifest" href="manifest.json" />
+<style>
+  body { font-family: system-ui, sans-serif; background:#0f172a; color:#f1f5f9; margin:0; }
+  header { padding:16px 24px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; }
+  main { padding:24px; max-width:1000px; margin:0 auto; }
+  .row { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+  input, button { padding:10px 14px; border-radius:8px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:14px; }
+  button { background:#2563eb; border:none; cursor:pointer; font-weight:600; }
+  button.secondary { background:#334155; }
+  button.danger { background:#dc2626; }
+  table { width:100%; border-collapse:collapse; margin-top:12px; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid #334155; font-size:14px; }
+  .badge { padding:3px 8px; border-radius:999px; font-size:12px; }
+  .created{background:#475569} .authorized{background:#a16207} .active{background:#15803d} .ended{background:#374151}
+  #liveBox { display:none; background:#1e293b; padding:16px; border-radius:12px; margin-top:20px; }
+  video { width:100%; max-width:420px; background:#000; border-radius:8px; display:block; cursor:crosshair; }
+  #linkOut { font-size:13px; color:#93c5fd; word-break:break-all; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Painel de Suporte Remoto</strong>
+  <span id="adminBadge" style="font-size:12px;color:#94a3b8"></span>
+</header>
+<main>
+  <section id="loginBox" class="row">
+    <input id="username" placeholder="Usuário" autocomplete="username" />
+    <input id="password" placeholder="Senha" type="password" autocomplete="current-password" />
+    <button id="loginBtn">Entrar</button>
+    <span id="loginError" style="color:#f87171;font-size:13px;align-self:center"></span>
+  </section>
+
+  <div id="appBox" style="display:none">
+  <section class="row">
+    <input id="studentName" placeholder="Nome do aluno (opcional)" />
+    <button id="createBtn">Criar sessão e gerar link</button>
+    <button class="secondary" id="logoutBtn">Sair</button>
+  </section>
+  <div id="linkOut"></div>
+
+  <div id="liveBox">
+    <h3 id="liveTitle"></h3>
+    <video id="remoteVideo" autoplay playsinline></video>
+    <p style="font-size:12px;color:#94a3b8">Clique na imagem para enviar um toque (controle remoto) para o dispositivo.</p>
+    <div class="row">
+      <button class="danger" id="endBtn">Encerrar sessão</button>
+    </div>
+  </div>
+
+  <h3>Histórico de sessões</h3>
+  <table>
+    <thead><tr><th>Aluno</th><th>Status</th><th>Criada em</th><th>Duração</th><th>Gravação</th><th>Ações</th></tr></thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

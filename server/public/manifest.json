@@ -1,0 +1,8 @@
+{
+  "name": "Suporte Remoto - Admin",
+  "short_name": "Suporte Admin",
+  "start_url": "/admin/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a"
+}

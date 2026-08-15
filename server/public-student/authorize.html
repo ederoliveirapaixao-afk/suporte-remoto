@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Autorizar sessão de suporte</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#0f172a; color:#f1f5f9; display:flex; min-height:100vh; align-items:center; justify-content:center; margin:0; padding:24px; box-sizing:border-box; }
+  .card { background:#1e293b; padding:28px; border-radius:16px; max-width:420px; width:100%; }
+  h1 { font-size:20px; margin-top:0; }
+  ul { line-height:1.7; padding-left:20px; }
+  .btn { display:block; width:100%; padding:14px; margin-top:20px; border:none; border-radius:10px; background:#2563eb; color:white; font-size:16px; font-weight:600; cursor:pointer; }
+  .btn:disabled { background:#475569; cursor:default; }
+  .status { margin-top:16px; font-size:14px; color:#94a3b8; }
+  .store-link { display:block; text-align:center; margin-top:14px; color:#60a5fa; font-size:14px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Autorização de sessão de suporte remoto</h1>
+    <p>Ao continuar, você autoriza que a equipe de suporte, <strong>durante esta sessão</strong>:</p>
+    <ul>
+      <li>Veja a tela do seu celular em tempo real</li>
+      <li>Controle o dispositivo para resolver o problema</li>
+      <li>Grave a sessão (a gravação fica disponível apenas para a equipe de suporte, para fins de auditoria)</li>
+    </ul>
+    <p>Essa permissão vale <strong>somente para esta sessão</strong> e pode ser encerrada a qualquer momento.</p>
+
+    <a id="openApp" class="btn" href="#">Abrir app e autorizar</a>
+    <a class="store-link" href="https://play.google.com/store/apps/details?id=com.escola.suporte" target="_blank">
+      Não tem o app? Instalar na Play Store
+    </a>
+    <div class="status" id="status">Aguardando autorização pelo app...</div>
+  </div>
+
+<script>
+  const token = location.pathname.split('/').pop();
+  const status = document.getElementById('status');
+
+  // Deep link para o app Android nativo (ver AndroidManifest / MainActivity).
+  // O navegador NÃO consegue autorizar/gravar/controlar sozinho — só o app pode.
+  document.getElementById('openApp').href = `suporteapp://autorizar?token=${token}`;
+
+  async function poll() {
+    try {
+      const r = await fetch(`/api/public/sessions/${token}`);
+      const data = await r.json();
+      if (data.status === 'authorized') status.textContent = 'Autorizado. Aguardando o suporte iniciar...';
+      if (data.status === 'active') status.textContent = 'Sessão ativa. Suporte conectado.';
+      if (data.status === 'ended') { status.textContent = 'Sessão encerrada.'; return; }
+    } catch (e) {}
+    setTimeout(poll, 2000);
+  }
+  poll();
+</script>
+</body>
+</html>

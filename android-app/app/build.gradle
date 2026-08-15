@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.escola.suporte'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.escola.suporte"
+        minSdk 26        // MediaProjection foreground service type exige API 29+ para o tipo específico;
+                          // mantemos minSdk 26 mas a captura de tela só funciona de fato a partir do Android 10 (API 29)
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildFeatures { viewBinding true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.activity:activity-ktx:1.9.0'
+
+    // WebRTC oficial do Google (mesma biblioteca usada por Signal, Jitsi, etc.)
+    implementation 'org.webrtc:google-webrtc:1.0.32006'
+
+    // WebSocket para sinalização
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // JSON
+    implementation 'org.json:json:20240303'
+}

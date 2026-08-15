@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Suporte Remoto</string>
+    <string name="accessibility_service_description">
+        Permite que a equipe de suporte controle o dispositivo (toques e gestos)
+        apenas durante uma sessão de suporte ativa e autorizada por você.
+    </string>
+</resources>
