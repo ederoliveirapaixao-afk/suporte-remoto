@@ -41,7 +41,7 @@ function saveSession(session) {
   writeDb(db);
 }
 function getSession(token) {
-  return readDb()[token];
+  return readDb()[token]; 
 }
 
 function requireAdmin(req, res, next) {
