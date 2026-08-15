@@ -26,12 +26,9 @@ if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, '{}');
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-// Hash bcrypt da senha do admin. Gere com: npx bcryptjs-cli hash "sua-senha"
-// ou use scripts/hash-password.js incluso neste projeto.
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH ||
-  bcrypt.hashSync('troque-esta-senha', 10); // fallback só para dev local
+  bcrypt.hashSync('troque-esta-senha', 10);
 
-// ---------- "Banco de dados" simples em arquivo JSON (suficiente para MVP) ----------
 function readDb() {
   return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 }
@@ -47,10 +44,6 @@ function getSession(token) {
   return readDb()[token];
 }
 
-// Estados possíveis da sessão
-// created -> authorized -> active -> ended
-
-// ---------- Autenticação do admin (login + JWT) ----------
 function requireAdmin(req, res, next) {
   const header = req.headers['authorization'] || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -67,9 +60,7 @@ const app = express();
 app.use(express.json());
 app.use('/admin', express.static(path.join(__dirname, 'public')));
 
-// Login: usuário/senha -> JWT válido por 12h.
-// Rate-limit simples em memória para dificultar força bruta.
-const loginAttempts = new Map(); // ip -> { count, resetAt }
+const loginAttempts = new Map();
 function loginRateLimited(ip) {
   const now = Date.now();
   const entry = loginAttempts.get(ip);
@@ -78,7 +69,7 @@ function loginRateLimited(ip) {
     return false;
   }
   entry.count += 1;
-  return entry.count > 10; // máx 10 tentativas / 15min por IP
+  return entry.count > 10;
 }
 
 app.post('/api/auth/login', (req, res) => {
@@ -99,15 +90,26 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token });
 });
 
-// ================== ICE servers (STUN + TURN) ==================
-// Endpoint público (admin e app Android usam) — evita hardcode nos clientes
-// e permite trocar o TURN sem precisar recompilar o app.
-const TURN_HOST = process.env.TURN_HOST || null; // ex: openrelay.metered.ca (TURN gerenciado) ou seu IP (coturn próprio)
+const TURN_HOST = process.env.TURN_HOST || null;
 const TURN_USER = process.env.TURN_USER || 'suporte';
 const TURN_PASS = process.env.TURN_PASS || 'troque-esta-senha';
 const TURN_PORT = process.env.TURN_PORT || '3478';
 
-app.get('/api/ice-servers', (req, res) => {
+const METERED_DOMAIN = process.env.METERED_DOMAIN || null;
+const METERED_API_KEY = process.env.METERED_API_KEY || null;
+
+app.get('/api/ice-servers', async (req, res) => {
+  if (METERED_DOMAIN && METERED_API_KEY) {
+    try {
+      const url = `https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`;
+      const r = await fetch(url);
+      const iceServers = await r.json();
+      return res.json({ iceServers });
+    } catch (e) {
+      console.error('Falha ao buscar credenciais Metered, caindo para STUN simples:', e.message);
+    }
+  }
+
   const servers = [{ urls: 'stun:stun.l.google.com:19302' }];
   if (TURN_HOST) {
     servers.push(
@@ -118,9 +120,6 @@ app.get('/api/ice-servers', (req, res) => {
   res.json({ iceServers: servers });
 });
 
-// ================== API ADMIN ==================
-
-// Criar sessão + gerar link único
 app.post('/api/sessions', requireAdmin, (req, res) => {
   const token = crypto.randomBytes(16).toString('hex');
   const session = {
@@ -139,21 +138,18 @@ app.post('/api/sessions', requireAdmin, (req, res) => {
   res.json({ ...session, link: `${baseUrl}/s/${token}` });
 });
 
-// Listar histórico
 app.get('/api/sessions', requireAdmin, (req, res) => {
   const db = readDb();
   const list = Object.values(db).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   res.json(list);
 });
 
-// Detalhe de uma sessão
 app.get('/api/sessions/:token', requireAdmin, (req, res) => {
   const session = getSession(req.params.token);
   if (!session) return res.status(404).json({ error: 'não encontrada' });
   res.json(session);
 });
 
-// Encerrar sessão (admin)
 app.post('/api/sessions/:token/end', requireAdmin, (req, res) => {
   const session = getSession(req.params.token);
   if (!session) return res.status(404).json({ error: 'não encontrada' });
@@ -169,7 +165,6 @@ app.post('/api/sessions/:token/end', requireAdmin, (req, res) => {
   res.json(session);
 });
 
-// Reproduzir gravação (somente admin, via token de auth)
 app.get('/api/sessions/:token/recording', requireAdmin, (req, res) => {
   const session = getSession(req.params.token);
   if (!session || !session.recordingFile) return res.status(404).end();
@@ -177,23 +172,18 @@ app.get('/api/sessions/:token/recording', requireAdmin, (req, res) => {
   res.sendFile(filePath);
 });
 
-// ================== API ALUNO (página pública de autorização) ==================
-
-// Página servida ao abrir o link
 app.get('/s/:token', (req, res) => {
   const session = getSession(req.params.token);
   if (!session) return res.status(404).send('Link inválido ou expirado.');
   res.sendFile(path.join(__dirname, 'public-student', 'authorize.html'));
 });
 
-// Info da sessão para a página do aluno carregar via JS
 app.get('/api/public/sessions/:token', (req, res) => {
   const session = getSession(req.params.token);
   if (!session) return res.status(404).json({ error: 'não encontrada' });
   res.json({ token: session.token, status: session.status });
 });
 
-// Aluno autoriza (chamado depois que o app Android confirma consentimento)
 app.post('/api/public/sessions/:token/authorize', (req, res) => {
   const session = getSession(req.params.token);
   if (!session) return res.status(404).json({ error: 'não encontrada' });
@@ -204,7 +194,6 @@ app.post('/api/public/sessions/:token/authorize', (req, res) => {
   res.json({ ok: true });
 });
 
-// App Android avisa que começou a transmitir/gravar
 app.post('/api/public/sessions/:token/start', (req, res) => {
   const session = getSession(req.params.token);
   if (!session) return res.status(404).json({ error: 'não encontrada' });
@@ -215,7 +204,6 @@ app.post('/api/public/sessions/:token/start', (req, res) => {
   res.json({ ok: true });
 });
 
-// Upload da gravação ao final da sessão (multipart/form-data, campo "video")
 const upload = multer({ dest: RECORDINGS_DIR });
 app.post('/api/public/sessions/:token/recording', upload.single('video'), (req, res) => {
   const session = getSession(req.params.token);
@@ -227,14 +215,9 @@ app.post('/api/public/sessions/:token/recording', upload.single('video'), (req, 
   res.json({ ok: true });
 });
 
-// ================== Sinalização WebRTC (WebSocket) ==================
-// Admin e app Android conectam no mesmo token e trocam SDP/ICE.
-// O servidor apenas repassa mensagens (relay) — não interpreta o conteúdo.
-
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-// token -> { admin: ws|null, student: ws|null }
 const rooms = new Map();
 
 function broadcastToSession(token, payload) {
@@ -248,7 +231,7 @@ function broadcastToSession(token, payload) {
 wss.on('connection', (ws, req) => {
   const url = new URL(req.url, 'http://localhost');
   const token = url.searchParams.get('token');
-  const role = url.searchParams.get('role'); // 'admin' | 'student'
+  const role = url.searchParams.get('role');
 
   const session = getSession(token);
   if (!session || (role !== 'admin' && role !== 'student')) {
@@ -260,8 +243,6 @@ wss.on('connection', (ws, req) => {
   rooms.get(token)[role] = ws;
 
   ws.on('message', (raw) => {
-    // Repassa sinalização (offer/answer/ice) e comandos de controle
-    // para a outra ponta da mesma sessão.
     const room = rooms.get(token);
     const target = role === 'admin' ? room.student : room.admin;
     if (target && target.readyState === target.OPEN) {
@@ -278,5 +259,4 @@ wss.on('connection', (ws, req) => {
 server.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
   console.log(`Painel admin: http://localhost:${PORT}/admin`);
-  console.log(`ADMIN_TOKEN atual: ${ADMIN_TOKEN}`);
 });
