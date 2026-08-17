@@ -155,8 +155,9 @@ class ScreenCaptureService : Service() {
         peerConnection?.addTrack(videoTrack)
 
         peerConnection?.createOffer(object : SdpObserverAdapter() {
-            override fun onCreateSuccess(desc: SessionDescription) {
-                peerConnection?.setLocalDescription(SdpObserverAdapter(), desc)
+          override fun onCreateSuccess(desc: SessionDescription?) {
+        if (desc == null) return
+        peerConnection?.setLocalDescription(SdpObserverAdapter(), desc)
                 signalingClient?.sendOffer(desc.description)
             }
         }, MediaConstraints())
