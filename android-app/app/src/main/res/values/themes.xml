@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.SuporteRemoto" parent="android:Theme.Material.Light" />
+</resources>
