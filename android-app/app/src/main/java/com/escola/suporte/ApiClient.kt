@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 object ApiClient {
 
     // Troque pelo domínio real do backend em produção.
-    const val BASE_URL = "https://SEU-BACKEND.exemplo.com"
+    const val BASE_URL = "https://suporte-remoto-5u6e.onrender.com"
 
     private val executor = Executors.newCachedThreadPool()
 
